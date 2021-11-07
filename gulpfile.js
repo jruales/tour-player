@@ -20,8 +20,9 @@ var browserSync    = require('browser-sync').create();
 var pjson = require('./package.json');
 
 // Удаляет все содержимое папки build и src/lib
-gulp.task('clean', function() {
-    return del.sync(['build/**', 'src/lib/**']);
+gulp.task('clean', function(done) {
+    del.sync(['build/**', 'src/lib/**']);
+    done();
 });
 
 // Очищает кэш файлов
@@ -77,6 +78,8 @@ gulp.task('mainBowerFiles', function() {
         .pipe(gulp.dest('src/lib'));
 });
 
+gulp.task('build', gulp.series('clean', 'clear', 'mainBowerFiles', gulp.parallel('scripts', 'styles')));
+
 // Проверка всех JS файлов в папке src/js
 gulp.task('jslint', function() {
     return gulp.src('src/js/**/*.js')
@@ -100,7 +103,7 @@ gulp.task('stylint', function() {
 });
 
 // Запускает локальный http сервер, следит за изменениями
-gulp.task('serve', ['build'], function() {
+gulp.task('serve', gulp.series('build', function() {
     browserSync.init({
         notify: false,
         server: './',
@@ -108,9 +111,9 @@ gulp.task('serve', ['build'], function() {
     });
 
     gulp.watch(['example/*'], browserSync.reload);
-    gulp.watch(['src/js/**/*.js', 'src/lib/*.js'], ['scripts', browserSync.reload]);
-    gulp.watch(['src/css/**/*.{css,styl}', 'src/lib/*.css'], ['styles', browserSync.reload]);
-});
+    gulp.watch(['src/js/**/*.js', 'src/lib/*.js'], gulp.series('scripts', browserSync.reload));
+    gulp.watch(['src/css/**/*.{css,styl}', 'src/lib/*.css'], gulp.series('styles', browserSync.reload));
+}));
 
 //Публикация на сайте tour-360.ru по FTP
 gulp.task('deploy', function() {
@@ -128,8 +131,5 @@ gulp.task('deploy', function() {
         }));
 });
 
-gulp.task('lint', ['jscs','stylint']);
-gulp.task('build', ['clean', 'clear', 'mainBowerFiles'], function() {
-    gulp.run(['scripts', 'styles']);
-});
-gulp.task('default', ['build']);
+gulp.task('lint', gulp.series('jscs','stylint'));
+gulp.task('default', gulp.series('build'));
